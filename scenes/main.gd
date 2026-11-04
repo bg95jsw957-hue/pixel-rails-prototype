@@ -29,7 +29,7 @@ func _ready() -> void:
 	# Center camera on map
 	var sz := map_view.world_size()
 	camera.position = sz * 0.5
-	camera.zoom = Vector2(0.55, 0.55)
+	camera.zoom = Vector2(0.85, 0.85)
 	# Soft background color
 	RenderingServer.set_default_clear_color(Color("c8e090"))
 
