@@ -44,3 +44,21 @@ const UI_GOOD := Color("4a8a3a")
 const UI_BAD := Color("a03828")
 const PREVIEW := Color(0.95, 0.85, 0.35, 0.7)
 const SELECT := Color(1.0, 0.95, 0.4, 0.9)
+const SELECT_FILL := Color(0.98, 0.78, 0.22, 0.62)
+const SELECT_EDGE := Color(0.42, 0.24, 0.05, 1.0)
+
+## Stable colors so a row in the Lines list matches that rail on the map.
+static func line_color(index: int) -> Color:
+	var colors: Array[Color] = [
+		Color("c4783a"),
+		Color("2f6fad"),
+		Color("5d8a32"),
+		Color("8a3d78"),
+		Color("2f7a74"),
+		Color("a84a28"),
+	]
+	var n := colors.size()
+	var i := index % n
+	if i < 0:
+		i += n
+	return colors[i]

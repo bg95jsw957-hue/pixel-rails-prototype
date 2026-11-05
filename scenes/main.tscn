@@ -90,38 +90,70 @@ theme_override_font_sizes/font_size = 11
 text = "Goal"
 autowrap_mode = 2
 
-[node name="SidePanel" type="VBoxContainer" parent="HUD/Root"]
+[node name="SidePanel" type="PanelContainer" parent="HUD/Root"]
 layout_mode = 1
-anchors_preset = 1
+anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -210.0
-offset_top = 52.0
-offset_right = -8.0
-offset_bottom = 300.0
+anchor_bottom = 1.0
+offset_left = -228.0
+offset_top = 50.0
+offset_right = -6.0
+offset_bottom = -8.0
 grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Margin" type="MarginContainer" parent="HUD/Root/SidePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="HUD/Root/SidePanel/Margin"]
+layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="LinesTitle" type="Label" parent="HUD/Root/SidePanel"]
+[node name="LinesTitle" type="Label" parent="HUD/Root/SidePanel/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.23, 0.16, 0.09, 1)
-text = "Lines (profit)"
+theme_override_font_sizes/font_size = 15
+text = "Lines"
 
-[node name="LinesBox" type="VBoxContainer" parent="HUD/Root/SidePanel"]
+[node name="LinesHint" type="Label" parent="HUD/Root/SidePanel/Margin/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="SelectedLine" type="Label" parent="HUD/Root/SidePanel"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.3, 0.15, 1)
+theme_override_colors/font_color = Color(0.35, 0.25, 0.12, 1)
 theme_override_font_sizes/font_size = 11
-text = "Line: (none)"
+text = "Tap a row or the colored track"
+autowrap_mode = 2
 
-[node name="BuyTrain" type="Button" parent="HUD/Root/SidePanel"]
+[node name="LinesScroll" type="ScrollContainer" parent="HUD/Root/SidePanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = false
+
+[node name="LinesBox" type="VBoxContainer" parent="HUD/Root/SidePanel/Margin/VBox/LinesScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="SelectedLine" type="Label" parent="HUD/Root/SidePanel/Margin/VBox"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-text = "Buy Train ($8,000)"
-tooltip_text = "Buy a train for the selected line"
+theme_override_colors/font_color = Color(0.23, 0.16, 0.09, 1)
+theme_override_font_sizes/font_size = 12
+text = "No line selected.
+Tap a line or its track."
+autowrap_mode = 3
+
+[node name="BuyTrain" type="Button" parent="HUD/Root/SidePanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+disabled = true
+text = "Pick a line first"
+tooltip_text = "Tap a line in the list, or tap its track on the map"
 
 [node name="PreviewPanel" type="PanelContainer" parent="HUD/Root"]
 visible = false
@@ -183,14 +215,20 @@ autowrap_mode = 2
 
 [node name="StatusLabel" type="Label" parent="HUD/Root"]
 layout_mode = 1
-anchors_preset = 2
+anchors_preset = 12
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -28.0
-offset_right = 400.0
-offset_bottom = -6.0
+offset_top = -36.0
+offset_right = -240.0
+offset_bottom = -4.0
+grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.3, 0.22, 0.12, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_shadow_color = Color(0.95, 0.93, 0.82, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
 text = "Ready"
+autowrap_mode = 2

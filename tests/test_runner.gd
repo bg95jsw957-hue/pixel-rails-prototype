@@ -19,6 +19,9 @@ func _run() -> void:
 	test_signals_block_collision()
 	test_city_growth_served_vs_stagnate()
 	test_train_earns_revenue()
+	test_buy_train_attaches_to_chosen_line()
+	test_pick_line_near_specific_rail()
+	test_buy_requires_explicit_line_selection()
 	test_corridor_cities_present()
 	test_preview_then_cancel_no_spend()
 	test_omaha_sacramento_connectable()
@@ -101,6 +104,69 @@ func test_train_earns_revenue() -> void:
 			break
 	assert_true(w.economy.money > money_before, "train earned revenue after trips")
 	assert_true(line.revenue > 0.0, "line shows revenue")
+
+func test_buy_train_attaches_to_chosen_line() -> void:
+	var w := PRWorld.new()
+	w.economy.money = 200000.0
+	var built_a := w.build_line("omaha", "julesburg")
+	var built_b := w.build_line("cheyenne", "laramie")
+	assert_true(built_a.ok and built_b.ok, "two lines exist to choose from")
+	var line_a: PRLine = built_a.line
+	var line_b: PRLine = built_b.line
+	var buy := w.buy_train(line_b.id)
+	assert_true(buy.ok, "bought train on the chosen line")
+	var train: PRTrain = buy.train
+	assert_eq(train.line_id, line_b.id, "train.line_id is the chosen line")
+	assert_true(w.trains[train.id].line_id == line_b.id, "world stores the train on that line")
+	assert_true(line_b.train_ids.has(train.id), "chosen line lists the train")
+	assert_eq(line_a.train_ids.size(), 0, "the other line did not receive the train")
+	assert_eq(w.trains.size(), 1, "exactly one train was created")
+	var cash := w.economy.money
+	var blank := w.buy_train("")
+	assert_true(not blank.ok, "blank line id is rejected")
+	var missing := w.buy_train("no-such-line")
+	assert_true(not missing.ok, "unknown line id is rejected")
+	assert_eq(w.trains.size(), 1, "rejected buys create no train")
+	assert_eq(w.economy.money, cash, "rejected buys do not charge")
+	var buy_a := w.buy_train(line_a.id)
+	assert_true(buy_a.ok, "bought a train on the other line")
+	var train_a: PRTrain = buy_a.train
+	assert_eq(train_a.line_id, line_a.id, "second train attached to its own line")
+	assert_eq(line_a.train_ids.size(), 1, "first line has one train")
+	assert_eq(line_b.train_ids.size(), 1, "second line still has one train")
+
+func test_pick_line_near_specific_rail() -> void:
+	var w := PRWorld.new()
+	var built_a := w.build_line("omaha", "julesburg")
+	var built_b := w.build_line("cheyenne", "laramie")
+	assert_true(built_a.ok and built_b.ok, "routes exist for map pick")
+	var line_a: PRLine = built_a.line
+	var line_b: PRLine = built_b.line
+	var mid_b: Vector2i = line_b.path[line_b.path.size() / 2]
+	var picked: PRLine = w.pick_line_near(mid_b.x, mid_b.y, 0, "")
+	assert_true(picked != null, "track cell finds a line")
+	assert_eq(picked.id, line_b.id, "tapped rail is line B, not the first line")
+	var mid_a: Vector2i = line_a.path[line_a.path.size() / 2]
+	assert_true(mid_a != mid_b, "the two sample cells are different rails")
+	var picked_a: PRLine = w.pick_line_near(mid_a.x, mid_a.y, 0, line_b.id)
+	assert_eq(picked_a.id, line_a.id, "tapped rail is line A")
+	assert_true(w.pick_line_near(0, 0, 0, "") == null, "empty cell selects no line")
+	# Overlapping cells cycle instead of sticking to the earlier line.
+	var shared := PRLine.new()
+	shared.id = "Lshared"
+	var overlap: Array[Vector2i] = [mid_b]
+	shared.path = overlap
+	w.network.lines.append(shared)
+	var first: PRLine = w.pick_line_near(mid_b.x, mid_b.y, 0, "")
+	var second: PRLine = w.pick_line_near(mid_b.x, mid_b.y, 0, first.id)
+	assert_true(first != null and second != null, "shared cell returns a line")
+	assert_true(first.id != second.id, "tapping a shared cell again cycles to the other line")
+	assert_true(second.id == line_b.id or second.id == shared.id, "cycle stays on lines through that cell")
+
+func test_buy_requires_explicit_line_selection() -> void:
+	assert_eq(PRHud.resolve_buy_line_id("", 1), "", "a single line is not an implicit selection")
+	assert_eq(PRHud.resolve_buy_line_id("", 3), "", "no selection stays empty")
+	assert_eq(PRHud.resolve_buy_line_id("L2", 3), "L2", "explicit selection is the buy target")
 
 func test_corridor_cities_present() -> void:
 	var w := PRWorld.new()
