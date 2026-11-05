@@ -2,3 +2,6 @@
 export/linux/
 *.translation
 export/web/*.import
+
+export/web/
+export/linux/
