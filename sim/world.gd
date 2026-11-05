@@ -125,8 +125,48 @@ func buy_train(line_id: String) -> Dictionary:
 	line.train_ids.append(t.id)
 	# Occupy starting block
 	signals.enter(line_id, 0, t.id)
-	message.emit("Bought train for %s → %s" % [cities[line.from_city_id].name, cities[line.to_city_id].name])
+	message.emit("Bought train on %s → %s only" % [cities[line.from_city_id].name, cities[line.to_city_id].name])
 	return {"ok": true, "train": t}
+
+func find_line(line_id: String) -> PRLine:
+	return _find_line(line_id)
+
+## Line under a map tap. radius is manhattan cells. When several lines tie
+## for the closest cell, pass current_id to cycle to the next one.
+func pick_line_near(x: int, y: int, radius: int = 0, current_id: String = "") -> PRLine:
+	var hits: Array = []
+	for line in network.lines:
+		var L: PRLine = line
+		var best := 1 << 30
+		for p in L.path:
+			var d := absi(p.x - x) + absi(p.y - y)
+			if d < best:
+				best = d
+				if best == 0:
+					break
+		if best <= radius:
+			hits.append({"line": L, "dist": best})
+	if hits.is_empty():
+		return null
+	hits.sort_custom(func(a, b):
+		if int(a.dist) == int(b.dist):
+			return str(a.line.id) < str(b.line.id)
+		return int(a.dist) < int(b.dist)
+	)
+	var closest := int(hits[0].dist)
+	var tied: Array = []
+	for h in hits:
+		if int(h.dist) != closest:
+			break
+		tied.append(h.line)
+	if tied.size() == 1:
+		return tied[0]
+	if current_id != "":
+		for i in tied.size():
+			var L: PRLine = tied[i]
+			if L.id == current_id:
+				return tied[(i + 1) % tied.size()]
+	return tied[0]
 
 func _find_line(line_id: String) -> PRLine:
 	for line in network.lines:
@@ -235,6 +275,7 @@ func lines_profit_summary() -> Array:
 		var L: PRLine = line
 		out.append({
 			"id": L.id,
+			"index": out.size(),
 			"name": "%s → %s" % [cities[L.from_city_id].name, cities[L.to_city_id].name],
 			"profit": L.profit(),
 			"revenue": L.revenue,

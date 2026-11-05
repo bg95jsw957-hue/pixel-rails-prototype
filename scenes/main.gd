@@ -10,6 +10,8 @@ var pending_preview: Dictionary = {}
 var drag_active := false
 var drag_last := Vector2.ZERO
 var pinch_dist := 0.0
+var _buy_lock_until := 0.0
+var _tap_frame := -999
 
 func _ready() -> void:
 	world = Game.world
@@ -19,6 +21,8 @@ func _ready() -> void:
 	hud.confirm_build.connect(_on_confirm)
 	hud.cancel_build.connect(_on_cancel)
 	hud.buy_train_pressed.connect(_on_buy_train)
+	hud.line_selected.connect(_on_line_selected)
+	map_view.line_tapped.connect(_on_line_tapped)
 	world.money_changed.connect(hud.update_money)
 	world.message.connect(hud.set_status)
 	hud.update_money(world.economy.money)
@@ -70,7 +74,7 @@ func _on_confirm() -> void:
 	var res := world.build_line(str(pending_preview.from), str(pending_preview.to))
 	_clear_pick()
 	if res.ok:
-		hud.set_status("Track laid! Select the line and buy a train.")
+		hud.set_status("Track laid. Tap that line, then Buy Train.")
 	else:
 		hud.set_status(str(res.error))
 
@@ -85,30 +89,47 @@ func _clear_pick() -> void:
 	map_view.preview_path = []
 	hud.hide_preview()
 
+func _on_line_tapped(line_id: String) -> void:
+	var line := world.find_line(line_id)
+	if line == null:
+		return
+	var line_name := "%s → %s" % [world.cities[line.from_city_id].name, world.cities[line.to_city_id].name]
+	hud.select_line(line_id, line_name)
+
+func _on_line_selected(line_id: String) -> void:
+	map_view.selected_line_id = line_id
+	if line_id == "":
+		hud.set_status("Pick a line, then buy a train.")
+		return
+	var line := world.find_line(line_id)
+	if line == null:
+		return
+	var line_name := "%s → %s" % [world.cities[line.from_city_id].name, world.cities[line.to_city_id].name]
+	hud.set_status("Selected %s." % line_name)
+
 func _on_buy_train() -> void:
-	var lid := hud.selected_line_id
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _buy_lock_until:
+		return
+	_buy_lock_until = now + 0.35
+	var lid := PRHud.resolve_buy_line_id(hud.selected_line_id, world.network.lines.size())
 	if lid == "":
-		if world.network.lines.size() == 1:
-			lid = world.network.lines[0].id
-			hud.selected_line_id = lid
-		else:
-			hud.set_status("Select a line first (list on the right).")
-			hud.show_tooltip("Tap a line in the side list, then Buy Train.")
-			return
+		hud.set_status("Pick a line first, then buy a train.")
+		hud.show_tooltip("Tap a line in the list, or tap its track on the map.")
+		return
 	var res := world.buy_train(lid)
 	if not res.ok:
 		hud.set_status(str(res.error))
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Mouse and touch emulate each other. Ignore the synthetic twin so one tap
+	# selects one line (or one station) instead of firing twice.
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	if event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
 		if st.pressed:
-			var local := map_view.to_local(get_canvas_transform().affine_inverse() * st.position)
-			# Convert via camera
-			local = camera.get_screen_center_position() + (st.position - get_viewport().get_visible_rect().size * 0.5) / camera.zoom
-			# Better: use canvas transform
-			local = _screen_to_map(st.position)
-			map_view.handle_tap(local)
+			_tap_map(st.position)
 			drag_active = true
 			drag_last = st.position
 		else:
@@ -119,7 +140,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			map_view.handle_tap(_screen_to_map(mb.position))
+			_tap_map(mb.position)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
 			camera.zoom = (camera.zoom * 1.1).clamp(Vector2(0.3, 0.3), Vector2(2.5, 2.5))
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
@@ -128,6 +149,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 			camera.position -= mm.relative / camera.zoom
+
+func _tap_map(screen_pos: Vector2) -> void:
+	var frame := Engine.get_process_frames()
+	if frame == _tap_frame:
+		return
+	_tap_frame = frame
+	map_view.handle_tap(_screen_to_map(screen_pos))
 
 func _screen_to_map(screen_pos: Vector2) -> Vector2:
 	var vp := get_viewport()
